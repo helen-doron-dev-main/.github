@@ -1,0 +1,23 @@
+# For: Node.js backend API repos
+name: Node.js SAST Scans
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'
+
+concurrency:
+  group: security-node-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    name: SAST - Semgrep (Node.js)
+    uses: ./.github/workflows/reusable-semgrep.yml
+    with:
+      additional_configs: '--config p/javascript --config p/typescript --config p/nodejs --config p/owasp-top-ten'
+      data_classification: 'PII (app-dependent)'
+      privacy_impact: 'Review API data handling and authentication flows'

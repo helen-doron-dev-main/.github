@@ -1,0 +1,23 @@
+# For: React web app repos
+name: React SAST Scans
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 2 * * 1'
+
+concurrency:
+  group: security-react-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sast:
+    name: SAST - Semgrep (React)
+    uses: ./.github/workflows/reusable-semgrep.yml
+    with:
+      additional_configs: '--config p/javascript --config p/typescript --config p/react --config p/html --config p/owasp-top-ten'
+      data_classification: 'PII (app-dependent)'
+      privacy_impact: 'Review client-side data handling and storage'

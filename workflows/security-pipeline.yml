@@ -5,47 +5,36 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  workflow_dispatch:
+    inputs:
+      target_url:
+        description: 'Target URL for DAST (staging)'
+        required: false
+        default: 'https://staging.yourapp.com'
+
+env:
+  DEFAULT_TARGET_URL: https://staging.yourapp.com
 
 jobs:
   # SAST runs on every PR/push
   sast:
     name: SAST - Semgrep
-    runs-on: ubuntu-latest
-    container:
-      image: semgrep/semgrep
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      - name: Run Semgrep
-        run: semgrep scan --config auto --config p/security-audit --json --output results.json
-        continue-on-error: true
-      
-      - uses: actions/upload-artifact@v4
-        with:
-          name: semgrep-results
-          path:  results.json
+    uses: ./.github/workflows/reusable-semgrep.yml
+    with:
+      data_classification: 'PII (app-dependent)'
+      privacy_impact: 'Review repo data handling'
 
   # DAST runs only on main branch (after deployment)
   dast:
     name: DAST - OWASP ZAP
-    runs-on: ubuntu-latest
     needs: sast  # Run after SAST
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-      - uses: actions/checkout@v4
-      
-      # Wait for deployment (adjust based on your deploy process)
-      - name: Wait for deployment
-        run: sleep 60
-      
-      - name: Run ZAP Baseline Scan
-        uses: zaproxy/action-baseline@v0.14.0
-        with:
-          target: 'https://staging.yourapp.com'
-          fail_action: false
-          allow_issue_writing: true
+    uses: ./.github/workflows/reusable-zap-baseline.yml
+    with:
+      target_url: ${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }}
+      scan_type: 'baseline'
+      data_classification: 'PII (app-dependent)'
+      privacy_impact: 'Review web data handling'
 
   # Summary job
   security-summary:
@@ -53,24 +42,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: [sast, dast]
     if: always()
-    
     steps:
-      - name: Download SAST results
-        uses: actions/download-artifact@v4
-        with: 
-          name: semgrep-results
-        continue-on-error: true
-      
       - name: Generate Summary
         run: |
           echo "## 🔒 Security Scan Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### SAST (Semgrep)" >> $GITHUB_STEP_SUMMARY
-          if [ -f results.json ]; then
-            echo "- Issues found: $(cat results.json | jq '.results | length')" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "- Results not available" >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "- See job summary and artifacts" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### DAST (OWASP ZAP)" >> $GITHUB_STEP_SUMMARY
-          echo "- Check artifacts for detailed report" >> $GITHUB_STEP_SUMMARY
+          echo "- See job summary and artifacts" >> $GITHUB_STEP_SUMMARY

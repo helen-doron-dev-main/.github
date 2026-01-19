@@ -20,4 +20,7 @@ applications.
 
 4. **Dependency Scanning**: (Future consideration for Stage 5)
 
-_Last reviewed: 2026-01-13_
+5. **Privacy (ISO 27701)**: Unity client apps are classified as non-PII by default,
+   unless the app explicitly collects user data
+
+_Last reviewed: 2026-01-19_

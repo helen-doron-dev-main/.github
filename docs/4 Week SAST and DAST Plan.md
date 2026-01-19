@@ -10,6 +10,10 @@ For ISO audits, you need to demonstrate:
 - ✅ **A.14.2.8** - System security testing (DAST on deployed apps)
 - ✅ **A.12.6.1** - Management of technical vulnerabilities (tracking & remediation)
 
+For ISO 27701, you need to demonstrate:
+- ✅ Privacy impact tracking on findings
+- ✅ Data classification documented in security policy
+
 **You don't need perfect security — you need documented, repeatable processes with evidence.**
 
 ---
@@ -29,14 +33,14 @@ For ISO audits, you need to demonstrate:
 
 ### 1.1 Create Security Policy Documentation
 
-Create a `SECURITY.md` in your organization's `.github` repository (applies to all repos):
+Create a `SECURITY.md` in `docs/security/` within the `.github` repository (applies to all repos):
 
-````markdown name=.github/SECURITY.md
+````markdown name=docs/security/SECURITY.md
 # Security Policy
 
 ## Secure Development Lifecycle
 
-This organization implements automated security testing as part of our SDLC in compliance with ISO 27001 (A.14.2).
+This organization implements automated security testing as part of our SDLC in compliance with ISO 27001 (A.14.2) and ISO 27701 privacy requirements.
 
 ### Static Application Security Testing (SAST)
 - **Tool**: Semgrep
@@ -54,6 +58,11 @@ This organization implements automated security testing as part of our SDLC in c
 - **Medium**:  Remediate within 90 days
 - **Low**:  Tracked and reviewed quarterly
 
+### Privacy & PII (ISO 27701)
+- **Data classification**: Each repository documents whether it processes PII.
+- **Privacy impact tracking**: Security findings include a privacy impact field.
+- **Retention**: Security artifacts retained for audit evidence (minimum 90 days).
+
 ## Reporting a Vulnerability
 
 Please report security vulnerabilities to security@yourcompany.com. 
@@ -63,6 +72,7 @@ Please report security vulnerabilities to security@yourcompany.com.
 - Scan results are retained as GitHub Actions artifacts (90 days)
 - Findings are tracked as GitHub Issues with `security` label
 - Remediation is tracked via pull request references
+- Privacy impact is recorded on security findings
 
 _Last reviewed: 2026-01-13_
 _Next review: 2026-07-13_
@@ -745,10 +755,11 @@ When auditors ask for evidence, point them to:
 
 | ISO Control | Evidence Location |
 |-------------|-------------------|
-| A.14.2.1 - Secure development policy | `SECURITY.md` in `.github` repo |
+| A.14.2.1 - Secure development policy | `docs/security/SECURITY.md` in `.github` repo |
 | A.14.2.5 - SAST in SDLC | GitHub Actions workflow runs + artifacts |
 | A.14.2.8 - System security testing | ZAP DAST reports in artifacts |
 | A.12.6.1 - Vulnerability management | GitHub Issues with `security` label |
+| ISO 27701 - Privacy management | Privacy impact field + data classification in policy |
 | Evidence retention | 90-day artifacts, monthly reports (365 days) |
 
 ---

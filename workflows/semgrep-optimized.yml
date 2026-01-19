@@ -9,7 +9,7 @@ on:
       - '**.js'
       - '**.dart'
       - '**.py'
-      - '**. java'
+      - '**.java'
       - '**.go'
 
 concurrency:
@@ -35,7 +35,7 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           semgrep scan --config auto --config p/security-audit \
-            --json --output results. json \
+            --json --output results.json \
             --baseline-commit ${{ github.event.pull_request.base.sha }}
       
       # Full scan on push to main

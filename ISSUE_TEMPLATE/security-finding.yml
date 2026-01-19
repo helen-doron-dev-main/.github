@@ -40,6 +40,18 @@ body:
       description:  Describe the vulnerability
     validations:
       required: true
+
+  - type: dropdown
+    id: privacy-impact
+    attributes:
+      label: Privacy Impact (ISO 27701)
+      options:
+        - None
+        - Possible PII exposure
+        - Confirmed PII exposure
+        - Unknown
+    validations:
+      required: true
   
   - type: textarea
     id: remediation

@@ -22,7 +22,7 @@ jobs:
       - name: Run ZAP Full Scan
         uses: zaproxy/action-full-scan@v0.11.0
         with:
-          target: ${{ github.event. inputs.target_url || 'https://staging.yourapp.com' }}
+          target: ${{ github.event.inputs.target_url || 'https://staging.yourapp.com' }}
           fail_action: false
           allow_issue_writing: true
           artifact_name: zap-full-report
@@ -35,4 +35,4 @@ jobs:
         with:
           name: zap-full-report
           path: report_html.html
-          retention-days: 30
+          retention-days: 90

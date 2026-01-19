@@ -47,11 +47,16 @@ jobs:
             - ✅ A. 14.2.5 - SAST implemented in CI/CD pipeline
             - ✅ A.14.2.8 - DAST implemented for web applications
             - ✅ A.12.6.1 - Vulnerability tracking via GitHub Issues
+
+            ## ISO 27701 Privacy Evidence
+            - ✅ Privacy impact recorded on security findings (issue template field)
+            - ✅ PII/data classification documented in security policy
             
             ## Evidence Locations
             - SAST Reports: GitHub Actions Artifacts (90-day retention)
             - DAST Reports: GitHub Actions Artifacts (90-day retention)
             - Remediation Tracking: GitHub Issues with 'security' label
+            - Security Policy: docs/security/SECURITY.md
             `;
             
             console.log(report);

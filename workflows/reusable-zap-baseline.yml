@@ -16,14 +16,69 @@ on:
         description: 'OpenAPI spec URL (for API scans)'
         required: false
         type: string
+      rules_file_name:
+        description: 'Optional ZAP rules file path (e.g., .zap/rules.tsv)'
+        required: false
+        type: string
+        default: ''
+      context_file:
+        description: 'Optional ZAP context file (for authenticated scans)'
+        required: false
+        type: string
+        default: ''
+      context_url:
+        description: 'Optional context URL (for authenticated scans)'
+        required: false
+        type: string
+        default: ''
+      user:
+        description: 'Optional ZAP user (for authenticated scans)'
+        required: false
+        type: string
+        default: ''
+      cmd_options:
+        description: 'Optional ZAP command-line options'
+        required: false
+        type: string
+        default: ''
+      allow_issue_writing:
+        description: 'Allow creating GitHub issues for findings'
+        required: false
+        type: boolean
+        default: true
+      artifact_retention_days:
+        description: 'Artifact retention days for audit evidence'
+        required: false
+        type: number
+        default: 90
+      data_classification:
+        description: 'ISO 27701 evidence: data classification (e.g., None, PII)'
+        required: false
+        type: string
+        default: ''
+      privacy_impact:
+        description: 'ISO 27701 evidence: privacy impact summary'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   zap: 
     name:  DAST Scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     
     steps:
       - uses: actions/checkout@v4
+
+      - name: Validate inputs
+        run: |
+          if [ "${{ inputs.scan_type }}" = "api" ] && [ -z "${{ inputs.openapi_url }}" ]; then
+            echo "openapi_url is required when scan_type=api" >&2
+            exit 1
+          fi
       
       - name: Run ZAP Baseline Scan
         if: inputs.scan_type == 'baseline'
@@ -31,8 +86,13 @@ jobs:
         with:
           target:  ${{ inputs.target_url }}
           fail_action:  false
-          allow_issue_writing: true
+          allow_issue_writing: ${{ inputs.allow_issue_writing }}
           artifact_name: dast-report
+          rules_file_name: ${{ inputs.rules_file_name }}
+          context_file: ${{ inputs.context_file }}
+          context_url: ${{ inputs.context_url }}
+          user: ${{ inputs.user }}
+          cmd_options: ${{ inputs.cmd_options }}
       
       - name: Run ZAP API Scan
         if:  inputs.scan_type == 'api'
@@ -41,8 +101,9 @@ jobs:
           target: ${{ inputs.openapi_url }}
           format: openapi
           fail_action: false
-          allow_issue_writing:  true
+          allow_issue_writing:  ${{ inputs.allow_issue_writing }}
           artifact_name: dast-api-report
+          cmd_options: ${{ inputs.cmd_options }}
       
       - name: Generate Summary
         if: always()
@@ -53,6 +114,12 @@ jobs:
           echo "**Target:** ${{ inputs.target_url }}" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
           echo "**Type:** ${{ inputs.scan_type }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.data_classification }}" ]; then
+            echo "**Data classification:** ${{ inputs.data_classification }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "${{ inputs.privacy_impact }}" ]; then
+            echo "**Privacy impact:** ${{ inputs.privacy_impact }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "See artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
       
@@ -64,4 +131,4 @@ jobs:
           path: |
             report_html.html
             report_json.json
-          retention-days: 90
+          retention-days: ${{ inputs.artifact_retention_days }}

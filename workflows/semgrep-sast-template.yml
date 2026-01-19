@@ -22,7 +22,7 @@ jobs:
         uses:  actions/checkout@v4
 
       - name: Run Semgrep
-        run: semgrep scan --config auto --json --output semgrep-results.json
+        run: semgrep scan --config auto --sarif --output semgrep-results.sarif --json --output semgrep-results.json
         env:
           # Optional: Connect to Semgrep Cloud for dashboard/tracking
           # SEMGREP_APP_TOKEN: ${{ secrets. SEMGREP_APP_TOKEN }}
@@ -33,12 +33,12 @@ jobs:
         with: 
           name: semgrep-results
           path: semgrep-results.json
-          retention-days: 30
+          retention-days: 90
 
       # Optional: Upload to GitHub Code Scanning (requires GHAS or public repo)
       - name: Upload SARIF to GitHub Security
         uses: github/codeql-action/upload-sarif@v3
         if: always()
         with:
-          sarif_file: semgrep-results.json
+          sarif_file: semgrep-results.sarif
         continue-on-error: true

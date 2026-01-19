@@ -8,6 +8,36 @@ on:
         required: false
         type: string
         default: ''
+      include:
+        description: 'Semgrep --include patterns (comma or newline-separated)'
+        required: false
+        type: string
+        default: ''
+      exclude:
+        description: 'Semgrep --exclude patterns (comma or newline-separated)'
+        required: false
+        type: string
+        default: ''
+      artifact_retention_days:
+        description: 'Artifact retention days for audit evidence'
+        required: false
+        type: number
+        default: 90
+      upload_sarif:
+        description: 'Upload SARIF to GitHub code scanning'
+        required: false
+        type: boolean
+        default: true
+      data_classification:
+        description: 'ISO 27701 evidence: data classification (e.g., None, PII)'
+        required: false
+        type: string
+        default: ''
+      privacy_impact:
+        description: 'ISO 27701 evidence: privacy impact summary'
+        required: false
+        type: string
+        default: ''
 
 jobs:
   semgrep: 
@@ -15,45 +45,83 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: semgrep/semgrep
+    permissions:
+      contents: read
+      security-events: write
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Run Semgrep
+        shell: bash
         run: |
+          set -euo pipefail
+          INCLUDE_ARGS=()
+          EXCLUDE_ARGS=()
+          if [ -n "${{ inputs.include }}" ]; then
+            IFS=$'\n,' read -r -a INCLUDES <<< "${{ inputs.include }}"
+            for pattern in "${INCLUDES[@]}"; do
+              if [ -n "$pattern" ]; then INCLUDE_ARGS+=(--include "$pattern"); fi
+            done
+          fi
+          if [ -n "${{ inputs.exclude }}" ]; then
+            IFS=$'\n,' read -r -a EXCLUDES <<< "${{ inputs.exclude }}"
+            for pattern in "${EXCLUDES[@]}"; do
+              if [ -n "$pattern" ]; then EXCLUDE_ARGS+=(--exclude "$pattern"); fi
+            done
+          fi
           semgrep scan \
             --config auto \
             --config p/security-audit \
             --config p/secrets \
             --config p/owasp-top-ten \
             ${{ inputs.additional_configs }} \
-            --sarif --output semgrep. sarif \
-            --json --output semgrep.json
+            --sarif --output semgrep.sarif \
+            --json --output semgrep.json \
+            "${INCLUDE_ARGS[@]}" \
+            "${EXCLUDE_ARGS[@]}"
         continue-on-error: true
       
       - name: Generate Summary
         if: always()
+        shell: bash
         run: |
           echo "## 🔒 SAST Scan Results" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Tool:** Semgrep" >> $GITHUB_STEP_SUMMARY
           echo "**Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
           echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ inputs.data_classification }}" ]; then
+            echo "**Data classification:** ${{ inputs.data_classification }}" >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -n "${{ inputs.privacy_impact }}" ]; then
+            echo "**Privacy impact:** ${{ inputs.privacy_impact }}" >> $GITHUB_STEP_SUMMARY
+          fi
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f semgrep.json ]; then
-            TOTAL=$(cat semgrep.json | jq '.results | length')
-            HIGH=$(cat semgrep.json | jq '[.results[] | select(.extra.severity == "ERROR")] | length')
-            MEDIUM=$(cat semgrep.json | jq '[.results[] | select(.extra.severity == "WARNING")] | length')
+            read -r TOTAL HIGH MEDIUM LOW < <(python - <<'PY'
+import json
+from pathlib import Path
+data = json.loads(Path('semgrep.json').read_text())
+results = data.get('results', [])
+total = len(results)
+high = sum(1 for r in results if r.get('extra', {}).get('severity') == 'ERROR')
+medium = sum(1 for r in results if r.get('extra', {}).get('severity') == 'WARNING')
+low = sum(1 for r in results if r.get('extra', {}).get('severity') == 'INFO')
+print(total, high, medium, low)
+PY
+)
             echo "| Severity | Count |" >> $GITHUB_STEP_SUMMARY
             echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
             echo "| High | $HIGH |" >> $GITHUB_STEP_SUMMARY
             echo "| Medium | $MEDIUM |" >> $GITHUB_STEP_SUMMARY
+            echo "| Low | $LOW |" >> $GITHUB_STEP_SUMMARY
             echo "| Total | $TOTAL |" >> $GITHUB_STEP_SUMMARY
           fi
       
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v3
-        if: always()
+        if: always() && inputs.upload_sarif
         with:
           sarif_file: semgrep.sarif
         continue-on-error: true
@@ -66,4 +134,4 @@ jobs:
           path: |
             semgrep.sarif
             semgrep.json
-          retention-days: 90  # ISO audit evidence retention
+          retention-days: ${{ inputs.artifact_retention_days }}  # ISO audit evidence retention
