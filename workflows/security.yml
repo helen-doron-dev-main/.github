@@ -1,0 +1,57 @@
+# For: Unity game/app repos
+name: Security Scans
+
+on:
+  push: 
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule: 
+    - cron: '0 2 * * 1'
+
+concurrency:
+  group:  security-${{ github.ref }}
+  cancel-in-progress:  true
+
+jobs:
+  sast:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    
+    steps:
+      - uses:  actions/checkout@v4
+      
+      - name: Run Semgrep for Unity/C#
+        run: |
+          semgrep scan \
+            --config auto \
+            --config p/csharp \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --exclude='Library' \
+            --exclude='Temp' \
+            --exclude='Logs' \
+            --exclude='*.meta' \
+            --sarif --output semgrep.sarif \
+            --json --output semgrep.json
+        continue-on-error: true
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🎮 Unity SAST Results" >> $GITHUB_STEP_SUMMARY
+          if [ -f semgrep.json ]; then
+            TOTAL=$(cat semgrep.json | jq '.results | length')
+            echo "Total findings: $TOTAL" >> $GITHUB_STEP_SUMMARY
+          fi
+      
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-report-${{ github. sha }}
+          path: |
+            semgrep.sarif
+            semgrep.json
+          retention-days: 90

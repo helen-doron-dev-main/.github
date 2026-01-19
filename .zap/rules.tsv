@@ -1,0 +1,4 @@
+10038	IGNORE	(Content Security Policy Header Not Set)
+10098	IGNORE	(Cross-Domain Misconfiguration)
+10109	WARN	(Modern Web Application)
+90033	WARN	(Loosely Scoped Cookie)

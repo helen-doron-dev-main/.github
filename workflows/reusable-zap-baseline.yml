@@ -1,0 +1,67 @@
+name: Reusable ZAP Baseline Scan
+
+on:
+  workflow_call:
+    inputs:
+      target_url:
+        description: 'Target URL to scan'
+        required:  true
+        type: string
+      scan_type:
+        description: 'Scan type:  baseline or api'
+        required: false
+        type: string
+        default: 'baseline'
+      openapi_url:
+        description: 'OpenAPI spec URL (for API scans)'
+        required: false
+        type: string
+
+jobs:
+  zap: 
+    name:  DAST Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run ZAP Baseline Scan
+        if: inputs.scan_type == 'baseline'
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target:  ${{ inputs.target_url }}
+          fail_action:  false
+          allow_issue_writing: true
+          artifact_name: dast-report
+      
+      - name: Run ZAP API Scan
+        if:  inputs.scan_type == 'api'
+        uses: zaproxy/action-api-scan@v0.9.0
+        with:
+          target: ${{ inputs.openapi_url }}
+          format: openapi
+          fail_action: false
+          allow_issue_writing:  true
+          artifact_name: dast-api-report
+      
+      - name: Generate Summary
+        if: always()
+        run: |
+          echo "## 🌐 DAST Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tool:** OWASP ZAP" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ inputs.target_url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u +%Y-%m-%dT%H:%M:%SZ)" >> $GITHUB_STEP_SUMMARY
+          echo "**Type:** ${{ inputs.scan_type }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See artifacts for detailed report." >> $GITHUB_STEP_SUMMARY
+      
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        if:  always()
+        with:
+          name: dast-report-${{ github.run_id }}
+          path: |
+            report_html.html
+            report_json.json
+          retention-days: 90

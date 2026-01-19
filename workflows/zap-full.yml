@@ -1,0 +1,38 @@
+name: OWASP ZAP Full Scan
+
+on:
+  schedule:
+    - cron: '0 4 * * 0' # Every Sunday at 4 AM UTC
+  workflow_dispatch:
+    inputs: 
+      target_url:
+        description: 'Target URL to scan'
+        required: true
+        default: 'https://staging.yourapp.com'
+
+jobs:
+  zap-full:
+    name: ZAP Full Scan
+    runs-on: ubuntu-latest
+    
+    steps: 
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run ZAP Full Scan
+        uses: zaproxy/action-full-scan@v0.11.0
+        with:
+          target: ${{ github.event. inputs.target_url || 'https://staging.yourapp.com' }}
+          fail_action: false
+          allow_issue_writing: true
+          artifact_name: zap-full-report
+          # Limit scan time to control minutes usage
+          cmd_options: '-T 60'  # Max 60 minutes
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-full-report
+          path: report_html.html
+          retention-days: 30

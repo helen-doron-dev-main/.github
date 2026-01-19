@@ -1,0 +1,51 @@
+name: Semgrep SAST (Optimized)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '**.cs'
+      - '**.ts'
+      - '**.js'
+      - '**.dart'
+      - '**.py'
+      - '**. java'
+      - '**.go'
+
+concurrency:
+  group: semgrep-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  semgrep:
+    name:  Semgrep Scan
+    runs-on: ubuntu-latest  # 1x multiplier
+    if: github.repository == 'your-org/your-repo'
+    
+    container:
+      image: semgrep/semgrep
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth:  0  # Full history for better diff scanning
+      
+      # Only scan changed files on PRs (faster!)
+      - name: Scan changed files only
+        if: github.event_name == 'pull_request'
+        run: |
+          semgrep scan --config auto --config p/security-audit \
+            --json --output results. json \
+            --baseline-commit ${{ github.event.pull_request.base.sha }}
+      
+      # Full scan on push to main
+      - name: Full scan
+        if: github.event_name == 'push'
+        run: |
+          semgrep scan --config auto --config p/security-audit \
+            --json --output results.json
+      
+      - uses: actions/upload-artifact@v4
+        with:
+          name: semgrep-results
+          path: results.json

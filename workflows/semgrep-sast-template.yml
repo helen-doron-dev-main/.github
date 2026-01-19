@@ -1,0 +1,44 @@
+name: Semgrep SAST Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches:  [main]
+  # Optional: run weekly full scan
+  schedule:
+    - cron: '0 2 * * 1' # Every Monday at 2 AM UTC
+
+jobs:
+  semgrep:
+    name: Semgrep Security Scan
+    runs-on: ubuntu-latest
+    
+    container:
+      image: semgrep/semgrep
+    
+    steps:
+      - name: Checkout code
+        uses:  actions/checkout@v4
+
+      - name: Run Semgrep
+        run: semgrep scan --config auto --json --output semgrep-results.json
+        env:
+          # Optional: Connect to Semgrep Cloud for dashboard/tracking
+          # SEMGREP_APP_TOKEN: ${{ secrets. SEMGREP_APP_TOKEN }}
+        continue-on-error: true # Don't fail the build initially; remove once stable
+
+      - name: Upload Semgrep results
+        uses: actions/upload-artifact@v4
+        with: 
+          name: semgrep-results
+          path: semgrep-results.json
+          retention-days: 30
+
+      # Optional: Upload to GitHub Code Scanning (requires GHAS or public repo)
+      - name: Upload SARIF to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: semgrep-results.json
+        continue-on-error: true

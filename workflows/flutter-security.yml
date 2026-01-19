@@ -1,0 +1,48 @@
+name: Flutter Security Checks
+
+on:
+  push: 
+    branches: [main]
+  pull_request:
+    branches:  [main]
+
+jobs:
+  sast:
+    name: SAST - Semgrep
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Run Semgrep
+        run: |
+          semgrep scan \
+            --config auto \
+            --config p/dart \
+            --config p/secrets \
+            --config p/owasp-top-ten \
+            --sarif --output semgrep.sarif \
+            --json --output semgrep.json
+        continue-on-error:  true
+      
+      - name:  Check for hardcoded secrets (critical for mobile)
+        run: |
+          echo "## 🔑 Secrets Detection" >> $GITHUB_STEP_SUMMARY
+          # Check for common mobile app secrets
+          if grep -rn "api[_-]key\|apikey\|secret\|password\|token" --include="*.dart" lib/ 2>/dev/null | grep -v "test\|mock\|example" | head -20; then
+            echo "⚠️ Potential hardcoded secrets found - review required" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ No obvious hardcoded secrets detected" >> $GITHUB_STEP_SUMMARY
+          fi
+        continue-on-error: true
+      
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sast-report-${{ github. sha }}
+          path: |
+            semgrep.sarif
+            semgrep.json
+          retention-days: 90
