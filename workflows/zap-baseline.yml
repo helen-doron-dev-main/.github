@@ -1,16 +1,23 @@
 name: OWASP ZAP Baseline Scan
 
 on:
-  # Run weekly
-  schedule:
-    - cron: '0 3 * * 1' # Every Monday at 3 AM UTC
-  # Or trigger manually
-  workflow_dispatch: 
+  workflow_call:
     inputs:
       target_url:
         description: 'Target URL to scan'
         required: true
+        type: string
         default: 'https://staging.yourapp.com'
+      rules_file_name:
+        description: 'Optional ZAP rules file path (e.g., .zap/rules.tsv)'
+        required: false
+        type: string
+        default: '.zap/rules.tsv'
+      allow_issue_writing:
+        description: 'Allow creating GitHub issues for findings'
+        required: false
+        type: boolean
+        default: true
 
 jobs:
   zap-baseline:
@@ -24,10 +31,10 @@ jobs:
       - name:  Run ZAP Baseline Scan
         uses: zaproxy/action-baseline@v0.14.0
         with:
-          target:  ${{ github.event.inputs.target_url || 'https://staging.yourapp.com' }}
-          rules_file_name: '.zap/rules.tsv'  # Optional: custom rules
+          target:  ${{ inputs.target_url || 'https://staging.yourapp.com' }}
+          rules_file_name: ${{ inputs.rules_file_name }}  # Optional: custom rules
           fail_action: false  # Don't fail build; set to true once stable
-          allow_issue_writing: true  # Creates GitHub issues for findings
+          allow_issue_writing: ${{ inputs.allow_issue_writing }}  # Creates GitHub issues for findings
           artifact_name: zap-baseline-report
 
       - name: Upload ZAP Report

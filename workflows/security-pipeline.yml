@@ -1,16 +1,18 @@
 name: Security Pipeline
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  workflow_dispatch:
+  workflow_call:
     inputs:
       target_url:
         description: 'Target URL for DAST (staging)'
         required: false
+        type: string
         default: 'https://staging.yourapp.com'
+      run_dast:
+        description: 'Whether to run DAST'
+        required: false
+        type: boolean
+        default: true
 
 env:
   DEFAULT_TARGET_URL: https://staging.yourapp.com
@@ -28,10 +30,10 @@ jobs:
   dast:
     name: DAST - OWASP ZAP
     needs: sast  # Run after SAST
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: inputs.run_dast
     uses: ./.github/workflows/reusable-zap-baseline.yml
     with:
-      target_url: ${{ github.event.inputs.target_url || env.DEFAULT_TARGET_URL }}
+      target_url: ${{ inputs.target_url || env.DEFAULT_TARGET_URL }}
       scan_type: 'baseline'
       data_classification: 'PII (app-dependent)'
       privacy_impact: 'Review web data handling'

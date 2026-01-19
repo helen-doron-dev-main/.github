@@ -1,13 +1,7 @@
 name: Semgrep SAST Scan
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches:  [main]
-  # Optional: run weekly full scan
-  schedule:
-    - cron: '0 2 * * 1' # Every Monday at 2 AM UTC
+  workflow_call:
 
 jobs:
   semgrep:

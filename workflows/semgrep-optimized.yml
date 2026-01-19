@@ -1,16 +1,17 @@
 name: Semgrep SAST (Optimized)
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - '**.cs'
-      - '**.ts'
-      - '**.js'
-      - '**.dart'
-      - '**.py'
-      - '**.java'
-      - '**.go'
+  workflow_call:
+    inputs:
+      scan_mode:
+        description: 'diff or full'
+        required: false
+        type: string
+        default: 'full'
+      baseline_commit:
+        description: 'Baseline commit for diff scan'
+        required: false
+        type: string
 
 concurrency:
   group: semgrep-${{ github.ref }}
@@ -32,15 +33,15 @@ jobs:
       
       # Only scan changed files on PRs (faster!)
       - name: Scan changed files only
-        if: github.event_name == 'pull_request'
+        if: inputs.scan_mode == 'diff' && inputs.baseline_commit != ''
         run: |
           semgrep scan --config auto --config p/security-audit \
             --json --output results.json \
-            --baseline-commit ${{ github.event.pull_request.base.sha }}
+            --baseline-commit ${{ inputs.baseline_commit }}
       
       # Full scan on push to main
       - name: Full scan
-        if: github.event_name == 'push'
+        if: inputs.scan_mode == 'full'
         run: |
           semgrep scan --config auto --config p/security-audit \
             --json --output results.json

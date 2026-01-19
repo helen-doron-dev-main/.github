@@ -2,12 +2,7 @@
 name: Node.js SAST Scans
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
-  schedule:
-    - cron: '0 2 * * 1'
+  workflow_call:
 
 concurrency:
   group: security-node-${{ github.ref }}
