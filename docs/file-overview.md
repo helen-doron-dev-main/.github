@@ -90,7 +90,7 @@ The additional secrets check is meant to catch obvious mobile‑app credential i
 
 ---
 
-[workflows/dast.yml](../workflows/dast.yml)  
+[workflows/dast-backend.yml](../workflows/dast-backend.yml)  
 This workflow is a DAST wrapper for backend APIs. It triggers both an API scan (OpenAPI‑driven) and a baseline scan using the reusable ZAP workflow.
 
 It supports optional authentication context and rule customization, while including privacy and data classification fields for ISO 27701 evidence. It is intended to be called by API repos as a single entry point.
