@@ -62,7 +62,7 @@ It writes the report to the job summary and uploads it as an artifact with long 
 
 ---
 
-[workflows/unity-security.yml](../workflows/unity-security.yml)  
+[workflows/sast-unity.yml](../workflows/sast-unity.yml)  
 This workflow is a Unity‑specific SAST runner. It calls the reusable Semgrep workflow with C# and secrets rules and excludes Unity build folders (`Library`, `Temp`, `Logs`) and `.meta` files.
 
 It also declares data classification as `None` and states the privacy impact assumption for Unity clients. The exclusions improve scan speed and reduce noise typical to Unity project layouts.
@@ -83,7 +83,7 @@ It also uses concurrency controls and includes privacy notes appropriate for fro
 
 ---
 
-[workflows/flutter-security.yml](../workflows/flutter-security.yml)  
+[workflows/sast-flutter.yml](../workflows/sast-flutter.yml)  
 This workflow is tailored for Flutter repos. It runs Semgrep with Dart and secrets rules plus OWASP Top 10 via the reusable workflow, and adds a lightweight grep‑based secrets check for Dart files.
 
 The additional secrets check is meant to catch obvious mobile‑app credential issues. It writes findings to the step summary but does not fail the build, keeping it audit‑friendly while reducing friction.
