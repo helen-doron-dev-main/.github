@@ -62,7 +62,7 @@ It writes the report to the job summary and uploads it as an artifact with long 
 
 ---
 
-[workflows/security.yml](../workflows/security.yml)  
+[workflows/unity-security.yml](../workflows/unity-security.yml)  
 This workflow is a Unity‑specific SAST runner. It calls the reusable Semgrep workflow with C# and secrets rules and excludes Unity build folders (`Library`, `Temp`, `Logs`) and `.meta` files.
 
 It also declares data classification as `None` and states the privacy impact assumption for Unity clients. The exclusions improve scan speed and reduce noise typical to Unity project layouts.
