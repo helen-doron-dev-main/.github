@@ -55,13 +55,6 @@ It supports optional context files, authentication parameters, rule tuning via `
 
 ---
 
-[workflows/security-pipeline.yml](../workflows/security-pipeline.yml)  
-This workflow orchestrates a full security pipeline by chaining SAST and DAST in one reusable entry point. It always runs Semgrep first, optionally runs ZAP afterward, then emits a final summary job.
-
-The design provides a single “security pipeline” interface for repos that want both SAST and DAST without wiring multiple workflows. It also ensures that a summary exists even when one of the jobs fails or is skipped.
-
----
-
 [workflows/security-report.yml](../workflows/security-report.yml)  
 This workflow generates a monthly security report using `actions/github-script`. It queries issues labeled `security`, counts open and closed findings over the last 30 days, and produces an ISO‑aligned narrative summary.
 
