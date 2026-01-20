@@ -3,6 +3,26 @@ name: Monthly Security Report
 
 on:
   workflow_call:
+    inputs:
+      retention-days:
+        description: 'Days to keep the report artifact'
+        default: 365
+        required: false
+        type: number
+      has-sast:
+        description: 'Is SAST (Static Analysis) enabled?'
+        default: true
+        required: false
+        type: boolean
+      has-dast:
+        description: 'Is DAST (Dynamic Analysis) enabled?'
+        default: false
+        required: false
+        type: boolean
+
+permissions:
+  issues: read
+  contents: read
 
 jobs: 
   generate-report:
@@ -12,38 +32,78 @@ jobs:
     steps:
       - name: Generate Report
         uses: actions/github-script@v7
+        env: 
+          HAS_SAST: ${{ inputs.has-sast }}
+          HAS_DAST: ${{ inputs.has-dast }}
         with:
           script:  |
             const { owner, repo } = context.repo;
+            const fs = require('fs');
             
-            // Get all security issues
-            const issues = await github.rest.issues.listForRepo({
+            const hasSast = process.env.HAS_SAST === 'true';
+            const hasDast = process.env.HAS_DAST === 'true';
+            const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+            // 1. Get ALL currently OPEN security issues (Full Risk Posture)
+            const allOpenIndex = await github.paginate(github.rest.issues.listForRepo, {
               owner,
               repo,
-              labels: 'security',
-              state: 'all',
-              since: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
+              labels: 'security', 
+              state: 'open',
+              per_page: 100
             });
+            // FILTER: Exclude Pull Requests (PRs are technically issues in GitHub API)
+            const openIssues = allOpenIndex.filter(issue => !issue.pull_request);
+
+            // 2. Get recently CLOSED security issues (Progress Report)
+            const allClosedIndex = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              labels: 'security', 
+              state: 'closed',
+              since: thirtyDaysAgo,
+              per_page: 100
+            });
+            // FILTER: Exclude Pull Requests
+            const closedIssues = allClosedIndex.filter(issue => !issue.pull_request);
             
-            const open = issues.data.filter(i => i.state === 'open').length;
-            const closed = issues.data.filter(i => i.state === 'closed').length;
+            const openCount = openIssues.length;
+            const closedCount = closedIssues.length;
+            const totalActiveSet = openCount + closedCount;
             
+            // Dynamic Compliance Rows
+            const sastRow = hasSast 
+              ? '✅ A. 14.2.5 - SAST implemented in CI/CD pipeline' 
+              : '❌ A. 14.2.5 - SAST NOT implemented';
+              
+            const dastRow = hasDast 
+              ? '✅ A.14.2.8 - DAST implemented for web applications' 
+              : '⚠️ A.14.2.8 - DAST not applicable or not implemented';
+
+            const evidenceLines = [
+              "- Security Policy: docs/security/SECURITY.md",
+              hasSast ? '- SAST Reports: GitHub Actions Artifacts' : null,
+              hasDast ? '- DAST Reports: GitHub Actions Artifacts' : null,
+              "- Remediation Tracking: GitHub Issues with 'security' label"
+            ].filter(Boolean).join('\n');
+
             const report = `
             # Monthly Security Report
-            **Period:** ${new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]} to ${new Date().toISOString().split('T')[0]}
-            **Generated:** ${new Date().toISOString()}
+            **Period:** ${thirtyDaysAgo.split('T')[0]} to ${new Date().toISOString().split('T')[0]} (UTC)
+            **Generated:** ${new Date().toISOString()} (UTC)
+            **Repository:** ${owner}/${repo}
             
             ## Summary
-            | Metric | Count |
-            |--------|-------|
-            | Open Security Issues | ${open} |
-            | Closed Security Issues | ${closed} |
-            | Total Findings | ${issues.data.length} |
+            | Metric | Count | Description |
+            |--------|-------|-------------|
+            | Open Security Issues | ${openCount} | Current Risk (Backlog) |
+            | Closed Security Issues | ${closedCount} | Fixed in last 30 days |
+            | Active/Recent Findings | ${totalActiveSet} | Open + Recently Closed |
             
             ## ISO 27001 Compliance Status
             - ✅ A. 14.2. 1 - Secure development policy:  Documented
-            - ✅ A. 14.2.5 - SAST implemented in CI/CD pipeline
-            - ✅ A.14.2.8 - DAST implemented for web applications
+            - ${sastRow}
+            - ${dastRow}
             - ✅ A.12.6.1 - Vulnerability tracking via GitHub Issues
 
             ## ISO 27701 Privacy Evidence
@@ -51,20 +111,22 @@ jobs:
             - ✅ PII/data classification documented in security policy
             
             ## Evidence Locations
-            - SAST Reports: GitHub Actions Artifacts (90-day retention)
-            - DAST Reports: GitHub Actions Artifacts (90-day retention)
-            - Remediation Tracking: GitHub Issues with 'security' label
-            - Security Policy: docs/security/SECURITY.md
+            ${evidenceLines}
             `;
             
             console.log(report);
             
-            // Create summary
             await core.summary.addRaw(report).write();
+            
+            const dateStr = new Date().toISOString().split('T')[0];
+            const fileName = `security-report-${repo}-${dateStr}.md`;
+            
+            fs.writeFileSync(fileName, report);
+            console.log(`Report written to ${fileName}`);
       
       - name: Upload Report
         uses: actions/upload-artifact@v4
         with:
-          name: security-report-${{ github.run_id }}
-          path: ${{ github.workspace }}
-          retention-days: 365  # Keep reports for 1 year for audit
+          name: security-report-${{ github.event.repository.name }}-${{ github.run_id }}
+          path: security-report-*.md 
+          retention-days: ${{ inputs.retention-days }}
