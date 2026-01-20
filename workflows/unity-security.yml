@@ -15,9 +15,6 @@ jobs:
     with:
       additional_configs: '--config p/csharp --config p/secrets --config p/owasp-top-ten'
       exclude: |
-        Library
-        Temp
-        Logs
         **/*.meta
       data_classification: 'None'
       privacy_impact: 'Unity client apps do not process PII locally'
