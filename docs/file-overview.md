@@ -104,13 +104,6 @@ It standardizes how frontend repos run OWASP ZAP, while also capturing privacy a
 
 ---
 
-[workflows/zap-baseline.yml](../workflows/zap-baseline.yml)  
-This workflow is a standalone OWASP ZAP baseline scan. It allows optional rule tuning via rules.tsv, optionally opens GitHub issues, and uploads the HTML report.
-
-It is a simpler, non‑reusable entry point suited for repos that just want a quick baseline scan without extra orchestration.
-
----
-
 [workflows/zap-full.yml](../workflows/zap-full.yml)  
 This workflow runs the full ZAP scan action, which is deeper and more time‑intensive than baseline. It supports command options (like time limits) and allows auto‑issue creation.
 
